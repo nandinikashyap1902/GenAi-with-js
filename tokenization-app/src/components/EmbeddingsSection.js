@@ -13,6 +13,28 @@ const EmbeddingsSection = () => {
     dangerouslyAllowBrowser: true // Note: In production, use a backend proxy
   });
 
+  // Generate mock embedding for demonstration when API limit is reached
+  const generateMockEmbedding = (text) => {
+    // Create a deterministic but realistic-looking embedding based on text
+    const embedding = [];
+    const textHash = text.split('').reduce((hash, char) => {
+      return ((hash << 5) - hash + char.charCodeAt(0)) & 0xffffffff;
+    }, 0);
+    
+    // Generate 3072 dimensions (same as text-embedding-3-large)
+    for (let i = 0; i < 3072; i++) {
+      const seed = textHash + i;
+      const value = (Math.sin(seed * 0.01) + Math.cos(seed * 0.02)) * 0.5;
+      embedding.push(value);
+    }
+    
+    return {
+      embedding: embedding,
+      index: 0,
+      object: 'embedding'
+    };
+  };
+
   const generateEmbedding = async () => {
     if (!process.env.REACT_APP_OPENAI_API_KEY) {
       setError('OpenAI API key not found. Please add REACT_APP_OPENAI_API_KEY to your .env file.');
@@ -32,7 +54,20 @@ const EmbeddingsSection = () => {
       setEmbedding(result.data[0]);
     } catch (err) {
       console.error('Error creating embedding:', err);
-      setError(`Error: ${err.message || 'Failed to generate embedding'}`);
+      
+      // Check if it's a quota/limit error and offer mock embedding
+      if (err.message && (err.message.includes('quota') || err.message.includes('limit') || err.message.includes('insufficient'))) {
+        setError(`API limit reached. Using mock embedding for demonstration. Error: ${err.message}`);
+        
+        // Generate mock embedding after a short delay to simulate API call
+        setTimeout(() => {
+          const mockResult = generateMockEmbedding(inputText);
+          setEmbedding(mockResult);
+          setError('⚠️ Using mock embedding (API limit reached). Functionality demonstration only.');
+        }, 1000);
+      } else {
+        setError(`Error: ${err.message || 'Failed to generate embedding'}`);
+      }
     } finally {
       setLoading(false);
     }
