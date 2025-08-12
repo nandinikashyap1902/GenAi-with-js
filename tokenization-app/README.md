@@ -6,6 +6,22 @@ A modern React.js application that demonstrates text tokenization using js-tikto
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)
 
+## 📸 Screenshots
+
+### 🔤 Tokenization Interface
+![Tokenization Interface](./screenshots/tokenization-tab.png)
+*The tokenization tab showing text-to-tokens encoding and tokens-to-text decoding with real-time token counting*
+
+### 🧠 Embeddings Interface  
+![Embeddings Interface](./screenshots/embeddings-tab.png)
+*The embeddings tab displaying vector generation, statistics, and interactive visualization*
+
+### 🎨 Modern UI Features
+- **Glassmorphism design** with gradient backgrounds and blur effects
+- **Interactive token display** with individual token highlighting
+- **Real-time statistics** and embedding visualization
+- **Responsive layout** that adapts to different screen sizes
+
 ## ✨ Features
 
 ### 🔤 Text Tokenization

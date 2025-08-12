@@ -5,7 +5,7 @@ import o200k_base from 'js-tiktoken/ranks/o200k_base';
 const TokenizerSection = () => {
   const [inputText, setInputText] = useState('Hello, I am Nandini');
   const [tokens, setTokens] = useState([]);
-  const [tokenInput, setTokenInput] = useState('25216, 3274, 11, 357, 939, 398, 3403, 1776, 170676');
+  const [tokenInput, setTokenInput] = useState('13225, 11, 357, 939, 478, 427, 2363');
   const [decodedText, setDecodedText] = useState('');
   const [copied, setCopied] = useState(false);
 
