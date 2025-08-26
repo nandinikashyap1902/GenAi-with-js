@@ -1,72 +1,87 @@
-import React, { useState } from 'react';
-import { OpenAI } from 'openai';
+import React, { useState, useMemo } from 'react';
 
 const EmbeddingsSection = () => {
-  const [inputText, setInputText] = useState('I love to visit India');
+  const [inputText, setInputText] = useState('');
   const [embedding, setEmbedding] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const ollamaModel = 'nomic-embed-text'; // Fixed model - no longer configurable
 
-  const client = new OpenAI({
-    apiKey: process.env.REACT_APP_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true // Note: In production, use a backend proxy
-  });
+  // Memoize Ollama API configuration to prevent recreation on every render
+  const ollamaConfig = useMemo(() => ({
+    baseUrl: 'http://localhost:11434',
+    defaultModel: 'nomic-embed-text'
+  }), []);
 
-  // Generate mock embedding for demonstration when API limit is reached
-  const generateMockEmbedding = (text) => {
-    // Create a deterministic but realistic-looking embedding based on text
-    const embedding = [];
-    const textHash = text.split('').reduce((hash, char) => {
-      return ((hash << 5) - hash + char.charCodeAt(0)) & 0xffffffff;
-    }, 0);
-    
-    // Generate 3072 dimensions (same as text-embedding-3-large)
-    for (let i = 0; i < 3072; i++) {
-      const seed = textHash + i;
-      const value = (Math.sin(seed * 0.01) + Math.cos(seed * 0.02)) * 0.5;
-      embedding.push(value);
+  // Check if Ollama server is running
+  const checkOllamaStatus = async () => {
+    try {
+      const response = await fetch(`${ollamaConfig.baseUrl}/api/tags`);
+      return response.ok;
+    } catch (error) {
+      return false;
     }
-    
-    return {
-      embedding: embedding,
-      index: 0,
-      object: 'embedding'
-    };
   };
 
   const generateEmbedding = async () => {
-    if (!process.env.REACT_APP_OPENAI_API_KEY) {
-      setError('OpenAI API key not found. Please add REACT_APP_OPENAI_API_KEY to your .env file.');
-      return;
-    }
-
     setLoading(true);
     setError('');
+    setEmbedding(null); // Clear previous embedding
+    
+    console.log('🔍 Generating embedding for text:', inputText);
+    console.log('🤖 Using model:', ollamaModel);
     
     try {
-      const result = await client.embeddings.create({
-        model: 'text-embedding-3-large',
-        input: inputText,
-        encoding_format: 'float',
+      // Check if Ollama server is running
+      const isOllamaRunning = await checkOllamaStatus();
+      if (!isOllamaRunning) {
+        setError('❌ Ollama server not running. Please start Ollama server: ollama serve');
+        setLoading(false);
+        return;
+      }
+
+      const requestBody = {
+        model: ollamaModel,
+        prompt: inputText
+      };
+      
+      console.log('📤 Request body:', requestBody);
+
+      // Generate embedding using Ollama API
+      const response = await fetch(`${ollamaConfig.baseUrl}/api/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
       });
 
-      setEmbedding(result.data[0]);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Response Error:', response.status, errorText);
+        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('📥 API Response:', result);
+      
+      // Format result to match expected structure
+      setEmbedding({
+        embedding: result.embedding,
+        index: 0,
+        object: 'embedding'
+      });
+
     } catch (err) {
       console.error('Error creating embedding:', err);
       
-      // Check if it's a quota/limit error and offer mock embedding
-      if (err.message && (err.message.includes('quota') || err.message.includes('limit') || err.message.includes('insufficient'))) {
-        setError(`API limit reached. Using mock embedding for demonstration. Error: ${err.message}`);
-        
-        // Generate mock embedding after a short delay to simulate API call
-        setTimeout(() => {
-          const mockResult = generateMockEmbedding(inputText);
-          setEmbedding(mockResult);
-          setError('⚠️ Using mock embedding (API limit reached). Functionality demonstration only.');
-        }, 1000);
+      if (err.message.includes('Failed to fetch') || err.message.includes('connection')) {
+        setError('🔌 Connection failed. Ensure Ollama server is running on http://localhost:11434');
+      } else if (err.message.includes('404')) {
+        setError(`📦 Model '${ollamaModel}' not found. Install it with: ollama pull ${ollamaModel}`);
       } else {
-        setError(`Error: ${err.message || 'Failed to generate embedding'}`);
+        setError(`❌ Error: ${err.message || 'Failed to generate embedding'}`);
       }
     } finally {
       setLoading(false);
@@ -86,13 +101,17 @@ const EmbeddingsSection = () => {
   return (
     <div className="embeddings-section">
       <div className="section-header">
-        <h2>🧠 OpenAI Embeddings</h2>
-        <p>Generate vector embeddings for text using OpenAI's text-embedding-3-large model</p>
+        <h2>🧠 Ollama Embeddings</h2>
+        <p>Generate vector embeddings for text using Ollama's local embedding models</p>
       </div>
 
       <div className="embeddings-container">
         <div className="input-section">
           <h3>📄 Input Text</h3>
+          <div className="model-info">
+            <span className="model-label">🤖 Embedding Model:</span>
+            <span className="model-name">nomic-embed-text</span>
+          </div>
           <div className="input-group">
             <textarea
               value={inputText}
@@ -137,7 +156,7 @@ const EmbeddingsSection = () => {
                   </div>
                   <div className="stat">
                     <span className="stat-label">Model:</span>
-                    <span className="stat-value">text-embedding-3-large</span>
+                    <span className="stat-value">{ollamaModel}</span>
                   </div>
                   <div className="stat">
                     <span className="stat-label">Input Length:</span>

@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Tiktoken } from 'js-tiktoken/lite';
 import o200k_base from 'js-tiktoken/ranks/o200k_base';
 
 const TokenizerSection = () => {
-  const [inputText, setInputText] = useState('Hello, I am Nandini');
+  const [inputText, setInputText] = useState('');
   const [tokens, setTokens] = useState([]);
-  const [tokenInput, setTokenInput] = useState('13225, 11, 357, 939, 478, 427, 2363');
+  const [tokenInput, setTokenInput] = useState('');
   const [decodedText, setDecodedText] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const enc = new Tiktoken(o200k_base);
+  // Memoize Tiktoken instance to prevent recreation on every render
+  const enc = useMemo(() => new Tiktoken(o200k_base), []);
 
   const handleEncode = () => {
     try {
@@ -22,8 +23,26 @@ const TokenizerSection = () => {
 
   const handleDecode = () => {
     try {
-      const tokenArray = tokenInput.split(',').map(token => parseInt(token.trim()));
+     
+      
+      // Clean the input - remove brackets, extra spaces, and other formatting
+      const cleanInput = tokenInput
+        .replace(/^\[|\]$/g, '') // Remove leading [ and trailing ]
+        .replace(/[^\d,\s-]/g, '') // Keep only digits, commas, spaces, and negative signs
+        .trim();
+      
+      const tokenArray = cleanInput
+        .split(',')
+        .map(token => parseInt(token.trim()))
+        .filter(token => !isNaN(token)); // Remove any NaN values
+      
+      if (tokenArray.length === 0) {
+        setDecodedText('Error: No valid tokens found');
+        return;
+      }
+      
       const decoded = enc.decode(tokenArray);
+      
       setDecodedText(decoded);
     } catch (error) {
       console.error('Decoding error:', error);
